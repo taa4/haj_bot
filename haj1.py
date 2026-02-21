@@ -724,6 +724,7 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ================= الدالة الرئيسية =================
 
+# ================= الدالة الرئيسية (بديل) =================
 def main():
     """تشغيل البوت"""
     # بناء التطبيق
@@ -734,9 +735,11 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(MessageHandler(filters.LOCATION, handle_location))
     
-    print("🤖 البوت يعمل...")
+    print("🤖 البوت يعمل على Render...")
+    
+    # للتشغيل على Render بدون webhook
     app.run_polling()
-
 
 if __name__ == "__main__":
     main()
+
