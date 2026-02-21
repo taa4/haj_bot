@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
+import asyncio
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import math
 import os
 import sys
@@ -64,7 +65,7 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     return int(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))))
 
 # ================= معالج البداية =================
-def start(update: Update, context: CallbackContext):
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """رسالة الترحيب والقائمة الرئيسية"""
     welcome_text = """
 🌙 مرحبا بك في مساعد الحج والعمرة 🤲
@@ -78,85 +79,85 @@ def start(update: Update, context: CallbackContext):
 
 اختر من القائمة أدناه: 👇
 """
-    update.message.reply_text(welcome_text, reply_markup=markup_main)
+    await update.message.reply_text(welcome_text, reply_markup=markup_main)
 
 # ================= معالج النصوص الرئيسي =================
-def handle_message(update: Update, context: CallbackContext):
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """معالجة جميع الرسائل النصية"""
     text = update.message.text.strip()
     
     # التعامل مع أزرار القائمة
     if text == "رجوع للقائمة الرئيسية":
-        start(update, context)
+        await start(update, context)
         return
         
     normalized_text = normalize_text(text)
     
     # ===== الحج =====
     if "حج" in normalized_text or text == "الحج":
-        show_hajj_info(update, context)
+        await show_hajj_info(update, context)
     
     # ===== العمرة =====
     elif "عمره" in normalized_text or "عمرة" in normalized_text or text == "العمرة":
-        show_umrah_info(update, context)
+        await show_umrah_info(update, context)
     
     # ===== الأدعية =====
     elif "ادعيه" in normalized_text or "ادعية" in normalized_text or "دعاء" in normalized_text or text == "الأدعية":
-        show_duas_menu(update, context)
+        await show_duas_menu(update, context)
     
     # ===== الخريطة =====
     elif "خريطه" in normalized_text or "خارطه" in normalized_text or "خرائط" in normalized_text or "موقع" in normalized_text or text == "الخريطة":
-        show_map_menu(update, context)
+        await show_map_menu(update, context)
     
     # ===== الأخطاء والكفارات =====
     elif "خطا" in normalized_text or "كفاره" in normalized_text or "غلط" in normalized_text or text == "الأخطاء والكفارات":
-        show_mistakes_menu(update, context)
+        await show_mistakes_menu(update, context)
     
     # ===== ميقات الإحرام =====
     elif "ميقات" in normalized_text or "احرام" in normalized_text or text == "ميقات الإحرام":
-        show_miqat_menu(update, context)
+        await show_miqat_menu(update, context)
     
     # معالجة الكلمات المفتاحية للأدعية
     elif "احرام" in normalized_text and "دعاء" in normalized_text:
-        dua_ihram(update, context)
+        await dua_ihram(update, context)
     elif "طواف" in normalized_text and "دعاء" in normalized_text:
-        dua_tawaf(update, context)
+        await dua_tawaf(update, context)
     elif "سعي" in normalized_text and "دعاء" in normalized_text:
-        dua_saee(update, context)
+        await dua_saee(update, context)
     elif "عرفه" in normalized_text or "عرفة" in normalized_text:
-        dua_arafah(update, context)
+        await dua_arafah(update, context)
     elif "جمرات" in normalized_text or "رمي" in normalized_text:
-        dua_jamarat(update, context)
+        await dua_jamarat(update, context)
     
     # معالجة الكلمات المفتاحية للمواقع
     elif "حرم" in normalized_text or "الكعبة" in normalized_text:
-        send_haram_location(update, context)
+        await send_haram_location(update, context)
     elif "صفا" in normalized_text:
-        send_safa_location(update, context)
+        await send_safa_location(update, context)
     elif "مروه" in normalized_text or "مروة" in normalized_text:
-        send_marwah_location(update, context)
+        await send_marwah_location(update, context)
     
     # معالجة طلب الموقع الحالي
     elif normalized_text == "موقعي" or "موقعي الحالي" in normalized_text:
-        request_location(update, context)
+        await request_location(update, context)
     
     # معالجة أسماء البلدان للميقات
     elif any(country in normalized_text for country in ['مصر', 'ليبيا', 'تونس', 'جزائر', 'مغرب', 'سودان']):
-        miqat_egypt(update, context)
+        await miqat_egypt(update, context)
     elif any(country in normalized_text for country in ['سوريا', 'لبنان', 'اردن', 'فلسطين']):
-        miqat_sham(update, context)
+        await miqat_sham(update, context)
     elif any(country in normalized_text for country in ['يمن', 'صنعاء', 'عدن']):
-        miqat_yemen(update, context)
+        await miqat_yemen(update, context)
     elif any(country in normalized_text for country in ['سعوديه', 'امارات', 'قطر', 'كويت', 'بحرين', 'عمان']):
-        miqat_gulf(update, context)
+        await miqat_gulf(update, context)
     elif any(country in normalized_text for country in ['امريكا', 'كندا', 'بريطانيا', 'فرنسا', 'المانيا']):
-        miqat_west(update, context)
+        await miqat_west(update, context)
     elif any(country in normalized_text for country in ['هند', 'باكستان', 'اندونيسيا', 'ماليزيا']):
-        miqat_asia(update, context)
+        await miqat_asia(update, context)
     
     else:
         # رسالة افتراضية إذا لم يتم التعرف على الطلب
-        update.message.reply_text(
+        await update.message.reply_text(
             "🤔 لم أفهم طلبك.\n\n"
             "يمكنك:\n"
             "• اختيار أحد الأزرار في الأسفل\n"
@@ -168,7 +169,7 @@ def handle_message(update: Update, context: CallbackContext):
         )
 
 # ================= دوال الحج والعمرة =================
-def show_hajj_info(update: Update, context: CallbackContext):
+async def show_hajj_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """عرض معلومات الحج"""
     text = """🕋 معلومات شاملة عن الحج
 
@@ -191,9 +192,9 @@ def show_hajj_info(update: Update, context: CallbackContext):
 📅 9 ذو الحجة: يوم عرفة (الوقوف بعرفة)
 📅 10-13 ذو الحجة: أيام التشريق (رمي الجمرات)"""
     
-    update.message.reply_text(text, reply_markup=markup_back)
+    await update.message.reply_text(text, reply_markup=markup_back)
 
-def show_umrah_info(update: Update, context: CallbackContext):
+async def show_umrah_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """عرض معلومات العمرة"""
     text = """🕋 معلومات شاملة عن العمرة
 
@@ -216,10 +217,10 @@ def show_umrah_info(update: Update, context: CallbackContext):
 
 ملاحظة: العمرة جائزة في أي وقت من السنة"""
     
-    update.message.reply_text(text, reply_markup=markup_back)
+    await update.message.reply_text(text, reply_markup=markup_back)
 
 # ================= دوال الأدعية =================
-def show_duas_menu(update: Update, context: CallbackContext):
+async def show_duas_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """عرض قائمة الأدعية"""
     text = """📿 أدعية الحج والعمرة
 
@@ -232,9 +233,9 @@ def show_duas_menu(update: Update, context: CallbackContext):
 
 اكتب ما تريد مثلاً: "دعاء الطواف" """
     
-    update.message.reply_text(text, reply_markup=markup_back)
+    await update.message.reply_text(text, reply_markup=markup_back)
 
-def dua_ihram(update: Update, context: CallbackContext):
+async def dua_ihram(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = """📿 أدعية الإحرام
 
 عقد النية:
@@ -249,9 +250,9 @@ def dua_ihram(update: Update, context: CallbackContext):
 عند دخول المسجد الحرام:
 "اللهم افتح لي أبواب رحمتك" """
     
-    update.message.reply_text(text)
+    await update.message.reply_text(text)
 
-def dua_tawaf(update: Update, context: CallbackContext):
+async def dua_tawaf(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = """📿 أدعية الطواف
 
 عند بداية كل شوط:
@@ -266,9 +267,9 @@ def dua_tawaf(update: Update, context: CallbackContext):
 عند شرب ماء زمزم:
 "اللهم إني أسألك علماً نافعاً، ورزقاً واسعاً، وشفاء من كل داء" """
     
-    update.message.reply_text(text)
+    await update.message.reply_text(text)
 
-def dua_saee(update: Update, context: CallbackContext):
+async def dua_saee(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = """📿 أدعية السعي
 
 عند الصعود على الصفا:
@@ -283,9 +284,9 @@ def dua_saee(update: Update, context: CallbackContext):
 عند المروة:
 "اللهم اجعلني من المقبولين، واغفر لي ولوالدي وللمؤمنين" """
     
-    update.message.reply_text(text)
+    await update.message.reply_text(text)
 
-def dua_arafah(update: Update, context: CallbackContext):
+async def dua_arafah(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = """📿 أدعية يوم عرفة
 
 أفضل الدعاء يوم عرفة:
@@ -300,9 +301,9 @@ def dua_arafah(update: Update, context: CallbackContext):
 الدعاء الشامل:
 "اللهم إني أسألك من الخير كله عاجله وآجله، ما علمت منه وما لم أعلم" """
     
-    update.message.reply_text(text)
+    await update.message.reply_text(text)
 
-def dua_jamarat(update: Update, context: CallbackContext):
+async def dua_jamarat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = """📿 أدعية رمي الجمرات
 
 عند رمي كل جمرة:
@@ -320,10 +321,10 @@ def dua_jamarat(update: Update, context: CallbackContext):
 دعاء عام:
 "اللهم اجعله حجاً مبروراً وسعياً مشكوراً وذنباً مغفوراً" """
     
-    update.message.reply_text(text)
+    await update.message.reply_text(text)
 
 # ================= دوال المواقع =================
-def show_map_menu(update: Update, context: CallbackContext):
+async def show_map_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """عرض قائمة المواقع"""
     text = """🗺 المواقع المقدسة
 
@@ -335,19 +336,19 @@ def show_map_menu(update: Update, context: CallbackContext):
 
 اكتب ما تريد مثلاً: "موقع الحرم" """
     
-    update.message.reply_text(text, reply_markup=markup_location)
+    await update.message.reply_text(text, reply_markup=markup_location)
 
-def request_location(update: Update, context: CallbackContext):
+async def request_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """طلب موقع المستخدم"""
-    update.message.reply_text(
+    await update.message.reply_text(
         "📍 يرجى الضغط على زر 'إرسال موقعي'",
         reply_markup=markup_location
     )
 
-def send_haram_location(update: Update, context: CallbackContext):
+async def send_haram_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """إرسال موقع المسجد الحرام"""
-    update.message.reply_location(latitude=21.4225, longitude=39.8262)
-    update.message.reply_text(
+    await update.message.reply_location(latitude=21.4225, longitude=39.8262)
+    await update.message.reply_text(
         """📍 المسجد الحرام
 مكة المكرمة
 
@@ -361,10 +362,10 @@ def send_haram_location(update: Update, context: CallbackContext):
 💡 الموقع: قلب مكة المكرمة"""
     )
 
-def send_safa_location(update: Update, context: CallbackContext):
+async def send_safa_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """إرسال موقع الصفا"""
-    update.message.reply_location(latitude=21.4229, longitude=39.8257)
-    update.message.reply_text(
+    await update.message.reply_location(latitude=21.4229, longitude=39.8257)
+    await update.message.reply_text(
         """📍 جبل الصفا
 يبدأ منه السعي
 
@@ -372,10 +373,10 @@ def send_safa_location(update: Update, context: CallbackContext):
 "إِنَّ الصَّفَا وَالْمَرْوَةَ مِن شَعَائِرِ اللَّهِ" """
     )
 
-def send_marwah_location(update: Update, context: CallbackContext):
+async def send_marwah_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """إرسال موقع المروة"""
-    update.message.reply_location(latitude=21.4237, longitude=39.8267)
-    update.message.reply_text(
+    await update.message.reply_location(latitude=21.4237, longitude=39.8267)
+    await update.message.reply_text(
         """📍 جبل المروة
 ينتهي إليه السعي
 
@@ -384,7 +385,7 @@ def send_marwah_location(update: Update, context: CallbackContext):
     )
 
 # ================= دوال الأخطاء والكفارات =================
-def show_mistakes_menu(update: Update, context: CallbackContext):
+async def show_mistakes_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """عرض قائمة الأخطاء والكفارات"""
     text = """⚠️ الأخطاء الشائعة وكفاراتها
 
@@ -402,10 +403,10 @@ def show_mistakes_menu(update: Update, context: CallbackContext):
 
 ملاحظة: من ترك واجباً فعليه دم (شاة)"""
     
-    update.message.reply_text(text, reply_markup=markup_back)
+    await update.message.reply_text(text, reply_markup=markup_back)
 
 # ================= دوال مواقيت الإحرام =================
-def show_miqat_menu(update: Update, context: CallbackContext):
+async def show_miqat_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """عرض قائمة مواقيت الإحرام"""
     text = """🌍 مواقيت الإحرام حسب البلد
 
@@ -431,9 +432,9 @@ def show_miqat_menu(update: Update, context: CallbackContext):
 
 أو اكتب مباشرة: "مصر" أو "سوريا" أو "السعودية" """
     
-    update.message.reply_text(text, reply_markup=markup_back)
+    await update.message.reply_text(text, reply_markup=markup_back)
 
-def miqat_egypt(update: Update, context: CallbackContext):
+async def miqat_egypt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ميقات مصر وشمال أفريقيا"""
     text = """🇪🇬 ميقات مصر وشمال أفريقيا
 (مصر، ليبيا، تونس، الجزائر، المغرب، السودان)
@@ -450,10 +451,10 @@ def miqat_egypt(update: Update, context: CallbackContext):
 
 💡 تنبيه: لا يجوز تجاوز الميقات بدون إحرام"""
     
-    update.message.reply_text(text, reply_markup=markup_back)
-    update.message.reply_location(latitude=26.3294, longitude=35.3123)
+    await update.message.reply_text(text, reply_markup=markup_back)
+    await update.message.reply_location(latitude=26.3294, longitude=35.3123)
 
-def miqat_sham(update: Update, context: CallbackContext):
+async def miqat_sham(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ميقات بلاد الشام"""
     text = """🇸🇾 ميقات بلاد الشام
 (سوريا، لبنان، الأردن، فلسطين)
@@ -468,10 +469,10 @@ def miqat_sham(update: Update, context: CallbackContext):
 • لا تجاوزه بدون إحرام
 • يستحب الإحرام قبله"""
     
-    update.message.reply_text(text, reply_markup=markup_back)
-    update.message.reply_location(latitude=24.9167, longitude=39.6167)
+    await update.message.reply_text(text, reply_markup=markup_back)
+    await update.message.reply_location(latitude=24.9167, longitude=39.6167)
 
-def miqat_yemen(update: Update, context: CallbackContext):
+async def miqat_yemen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ميقات اليمن"""
     text = """🇾🇪 ميقات اليمن
 
@@ -485,10 +486,10 @@ def miqat_yemen(update: Update, context: CallbackContext):
 
 💡 خاص بأهل اليمن ومن جاء من جهتهم"""
     
-    update.message.reply_text(text, reply_markup=markup_back)
-    update.message.reply_location(latitude=21.4167, longitude=40.6000)
+    await update.message.reply_text(text, reply_markup=markup_back)
+    await update.message.reply_location(latitude=21.4167, longitude=40.6000)
 
-def miqat_gulf(update: Update, context: CallbackContext):
+async def miqat_gulf(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ميقات دول الخليج"""
     text = """🇸🇦 ميقات الخليج العربي
 (السعودية، الإمارات، قطر، الكويت، البحرين، عُمان)
@@ -504,10 +505,10 @@ def miqat_gulf(update: Update, context: CallbackContext):
 • ميقاتهم قرن المنازل
 • يحرمون عند الوصول إليه"""
     
-    update.message.reply_text(text, reply_markup=markup_back)
-    update.message.reply_location(latitude=21.3500, longitude=40.2000)
+    await update.message.reply_text(text, reply_markup=markup_back)
+    await update.message.reply_location(latitude=21.3500, longitude=40.2000)
 
-def miqat_west(update: Update, context: CallbackContext):
+async def miqat_west(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ميقات الدول الغربية"""
     text = """🌎 ميقات أمريكا وأوروبا
 (أمريكا، كندا، بريطانيا، فرنسا، ألمانيا)
@@ -526,9 +527,9 @@ def miqat_west(update: Update, context: CallbackContext):
 • جهز ملابس الإحرام في حقيبة اليد
 • استشر شركة الطيران عن وقت الإحرام"""
     
-    update.message.reply_text(text, reply_markup=markup_back)
+    await update.message.reply_text(text, reply_markup=markup_back)
 
-def miqat_asia(update: Update, context: CallbackContext):
+async def miqat_asia(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ميقات دول آسيا"""
     text = """🌏 ميقات آسيا
 (الهند، باكستان، إندونيسيا، ماليزيا)
@@ -545,10 +546,10 @@ def miqat_asia(update: Update, context: CallbackContext):
 • استعلم من مكتب الحج في بلدك
 • شركات الطيران تنبه عادة لوقت الإحرام"""
     
-    update.message.reply_text(text, reply_markup=markup_back)
+    await update.message.reply_text(text, reply_markup=markup_back)
 
 # ================= معالج الموقع الجغرافي =================
-def handle_location(update: Update, context: CallbackContext):
+async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """معالجة الموقع المرسل من المستخدم"""
     if update.message.location:
         lat = update.message.location.latitude
@@ -557,7 +558,7 @@ def handle_location(update: Update, context: CallbackContext):
         # حساب المسافة من الحرم
         distance = calculate_distance(lat, lon, 21.4225, 39.8262)
         
-        update.message.reply_text(
+        await update.message.reply_text(
             f"📍 موقعك الحالي:\n"
             f"• خط العرض: {lat:.4f}\n"
             f"• خط الطول: {lon:.4f}\n\n"
@@ -569,19 +570,17 @@ def handle_location(update: Update, context: CallbackContext):
 # ================= الدالة الرئيسية =================
 def main():
     """تشغيل البوت"""
-    # إنشاء updater
-    updater = Updater(TOKEN, use_context=True)
-    dp = updater.dispatcher
+    # بناء التطبيق
+    app = Application.builder().token(TOKEN).build()
     
     # إضافة المعالجات
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
-    dp.add_handler(MessageHandler(Filters.location, handle_location))
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.add_handler(MessageHandler(filters.LOCATION, handle_location))
     
     # بدء البوت
     print("🤖 البوت يعمل...")
-    updater.start_polling()
-    updater.idle()
+    app.run_polling()
 
 if __name__ == "__main__":
     main()
