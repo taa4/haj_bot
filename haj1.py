@@ -17,6 +17,10 @@ logging.basicConfig(
 load_dotenv()
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
+if not TOKEN:
+    print("❌ خطأ: التوكن غير موجود!")
+    sys.exit(1)
+
 # إحداثيات الأماكن المقدسة
 HARAM = (21.4225, 39.8262)
 SAFA = (21.4229, 39.8257)
@@ -504,7 +508,7 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
     """تشغيل البوت"""
     print(f"🚀 بدء تشغيل البوت...")
-    print(f"📱 التوكن: {TOKEN[:5]}...{TOKEN[-5:] if TOKEN else 'غير موجود'}")
+    print(f"🐍 Python version: {sys.version}")
     
     if not TOKEN:
         print("❌ خطأ: التوكن غير موجود!")
