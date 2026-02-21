@@ -1,22 +1,28 @@
 # -*- coding: utf-8 -*-
-from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
-import math
 import os
 import sys
+import math
+import logging
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
+from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 from dotenv import load_dotenv
 
-# تحميل التوكن من ملف .env
+# إعداد logging
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+
+# تحميل التوكن
 load_dotenv()
-# إصلاح مشكلة الترميز
-sys.stdout.reconfigure(encoding='utf-8')
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
+# إحداثيات الأماكن المقدسة
 HARAM = (21.4225, 39.8262)
 SAFA = (21.4229, 39.8257)
 MARWA = (21.4237, 39.8267)
 
-# ================= القوائم (مرة واحدة فقط) =================
+# ================= القوائم =================
 main_menu = [
     ["الحج", "العمرة"],
     ["الأدعية", "الخريطة"],
@@ -73,21 +79,15 @@ location_keyboard = ReplyKeyboardMarkup(
 # ================= دوال المساعدة =================
 
 def normalize_text(text):
-    """تقنين النص وإزالة التشكيل والحركات"""
+    """تقنين النص وإزالة التشكيل"""
     text = text.strip().lower()
-
-    # استبدال الأحلام المشابهة
     replacements = {
-        'أ': 'ا', 'إ': 'ا', 'آ': 'ا',
-        'ة': 'ه', 'ى': 'ي', 'ؤ': 'و',
-        'ئ': 'ي', 'ّ': '', 'َ': '',
-        'ُ': '', 'ِ': '', 'ْ': '',
-        'ً': '', 'ٌ': '', 'ٍ': '',
+        'أ': 'ا', 'إ': 'ا', 'آ': 'ا', 'ة': 'ه', 'ى': 'ي',
+        'ؤ': 'و', 'ئ': 'ي', 'ّ': '', 'َ': '', 'ُ': '', 'ِ': '',
+        'ْ': '', 'ً': '', 'ٌ': '', 'ٍ': '',
     }
-
     for old, new in replacements.items():
         text = text.replace(old, new)
-
     return text
 
 
@@ -98,131 +98,63 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     phi2 = math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
     dlambda = math.radians(lon2 - lon1)
-
-    a = math.sin(dphi/2)**2 + math.cos(phi1) * \
-        math.cos(phi2)*math.sin(dlambda/2)**2
+    a = math.sin(dphi/2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda/2)**2
     return int(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))))
 
 
 def process_text(text):
-    """معالجة النص وفهم القصد منه مع دعم متعدد للكتابة"""
+    """معالجة النص وفهم القصد"""
     text_norm = normalize_text(text)
-
-    # ================= الميقات =================
-    miqat_keywords = ['ميقات', 'احرام', 'إحرام', 'احرم', 'أحرم',
-                      'من اين احرم', 'اين الميقات', 'متي احرم', 'متى احرم',
-                      'موعد الاحرام', 'مكان الاحرام', 'محل الاحرام',
-                      'ميقات الاحرام', 'دخول ميقات', 'خروج ميقات',
-                      'اين يحرم اهل', 'ميقات اهل', 'احرم من', 'احرم اذا',
-                      'أحرم من', 'كيف احرم', 'من وين احرم', 'وين الميقات']
-
-    # بلاد الشام
-    sham_countries = {'شام': 'miqat_sham', 'سوريا': 'miqat_sham', 'سوري': 'miqat_sham', 'سوريه': 'miqat_sham',
-                      'لبنان': 'miqat_sham', 'لبناني': 'miqat_sham', 'لبنانيه': 'miqat_sham',
-                      'اردن': 'miqat_sham', 'اردني': 'miqat_sham', 'الاردن': 'miqat_sham',
-                      'فلسطين': 'miqat_sham', 'فلسطيني': 'miqat_sham', 'فلسطينيه': 'miqat_sham',
-                      'غزه': 'miqat_sham', 'غزة': 'miqat_sham', 'القدس': 'miqat_sham'}
-
-    # مصر وشمال أفريقيا
-    egypt_countries = {'مصر': 'miqat_egypt', 'مصري': 'miqat_egypt', 'مصريه': 'miqat_egypt',
-                       'القاهرة': 'miqat_egypt', 'اسكندرية': 'miqat_egypt', 'اسكندريه': 'miqat_egypt',
-                       'ليبا': 'miqat_egypt', 'ليبيا': 'miqat_egypt', 'ليبي': 'miqat_egypt',
-                       'تونس': 'miqat_egypt', 'تونسي': 'miqat_egypt', 'تونسيه': 'miqat_egypt',
-                       'جزاير': 'miqat_egypt', 'الجزاير': 'miqat_egypt', 'جزائر': 'miqat_egypt',
-                       'الجزائر': 'miqat_egypt', 'جزائري': 'miqat_egypt',
-                       'مغرب': 'miqat_egypt', 'المغرب': 'miqat_egypt', 'مغربي': 'miqat_egypt',
-                       'موريتانيا': 'miqat_egypt', 'موريتاني': 'miqat_egypt',
-                       'السودان': 'miqat_egypt', 'سوداني': 'miqat_egypt', 'سودان': 'miqat_egypt',
-                       'تشاد': 'miqat_egypt', 'تشادي': 'miqat_egypt'}
-
-    # اليمن
-    yemen_countries = {'يمن': 'miqat_yemen', 'اليمن': 'miqat_yemen', 'يمني': 'miqat_yemen',
-                       'صنعاء': 'miqat_yemen', 'عدن': 'miqat_yemen', 'حضرموت': 'miqat_yemen'}
-
-    # التحقق من الميقات أولاً
-    if any(keyword in text_norm for keyword in miqat_keywords):
-        # البحث في جميع قوائم البلدان
-        all_countries = {**sham_countries, **egypt_countries, **yemen_countries}
-
-        for country_keyword, miqat_type in all_countries.items():
-            if country_keyword in text_norm:
-                return miqat_type
-
-        # إذا ذكر ميقات بدون بلد
-        if 'شام' in text_norm or 'سور' in text_norm or 'لبن' in text_norm or 'فلسطين' in text_norm or 'اردن' in text_norm:
+    
+    # الميقات
+    if any(word in text_norm for word in ['ميقات', 'احرام', 'احرم']):
+        if any(word in text_norm for word in ['شام', 'سور', 'لبن', 'فلسطين', 'اردن']):
             return "miqat_sham"
-        elif 'مصر' in text_norm or 'شمال' in text_norm or 'افريقيا' in text_norm:
+        elif any(word in text_norm for word in ['مصر', 'مغرب', 'جزائر', 'تونس', 'ليبيا']):
             return "miqat_egypt"
-        elif 'يمن' in text_norm:
+        elif any(word in text_norm for word in ['يمن', 'عدن', 'صنعاء']):
             return "miqat_yemen"
         else:
             return "miqat_menu"
-
-    # الحج
-    hajj_keywords = ['حج', 'حجاج', 'الحج', 'حجج', 'حجه', 'حجا']
-    if any(keyword in text_norm for keyword in hajj_keywords):
+    
+    # الحج والعمرة
+    if 'حج' in text_norm:
         return "hajj"
-
-    # العمرة
-    umrah_keywords = ['عمره', 'عمرة', 'عمر', 'العمرة', 'العمره']
-    if any(keyword in text_norm for keyword in umrah_keywords):
+    if 'عمر' in text_norm:
         return "umrah"
-
+    
     # الأدعية
-    if text_norm in ["ادعيه", "ادعية", "دعاء", "الادعيه", "الادعية"]:
+    if 'ادع' in text_norm or 'دعاء' in text_norm:
+        if 'احرام' in text_norm:
+            return "dua_ihram"
+        if 'طواف' in text_norm:
+            return "dua_tawaf"
+        if 'سعي' in text_norm:
+            return "dua_saee"
+        if 'عرفه' in text_norm or 'عرفة' in text_norm:
+            return "dua_arafah"
+        if 'جمرات' in text_norm:
+            return "dua_jamarat"
         return "dua_menu"
-
-    if "احرام" in text_norm:
-        return "dua_ihram"
-
-    if "طواف" in text_norm:
-        return "dua_tawaf"
-
-    if "سعي" in text_norm:
-        return "dua_saee"
-
-    if "عرفه" in text_norm or "عرفة" in text_norm:
-        return "dua_arafah"
-
-    if "جمرات" in text_norm or "رمي" in text_norm:
-        return "dua_jamarat"
-
+    
     # الأخطاء
-    mistakes_keywords = ['خطاء', 'خطا', 'غلط', 'كفارة']
-    if any(keyword in text_norm for keyword in mistakes_keywords):
-        if 'لبس مخيط' in text_norm:
-            return "mistake_clothes"
-        elif 'طيب' in text_norm:
-            return "mistake_perfume"
-        elif 'قص شعر' in text_norm or 'قص اظافر' in text_norm:
-            return "mistake_hair_nails"
-        elif 'تغطية الرأس' in text_norm:
-            return "mistake_cover_head"
-        elif 'طواف بدون وضوء' in text_norm:
-            return "mistake_tawaf_no_wudu"
-        elif 'نسي شوط' in text_norm:
-            return "mistake_miss_shawt"
-        else:
-            return "mistakes_menu"
-
-    # المواقع
-    map_keywords = ['خريطة', 'موقع', 'مكان', 'اين', 'وين']
-    if any(keyword in text_norm for keyword in map_keywords):
+    if any(word in text_norm for word in ['خطأ', 'غلط', 'كفارة']):
+        return "mistakes_menu"
+    
+    # الخريطة
+    if any(word in text_norm for word in ['خريطة', 'موقع', 'مكان']):
         if 'حرام' in text_norm:
             return "map_haram"
-        elif 'صفا' in text_norm:
+        if 'صفا' in text_norm:
             return "map_safa"
-        elif 'مروه' in text_norm:
+        if 'مروة' in text_norm:
             return "map_marwa"
-        else:
-            return "map_menu"
-
-    # الترحيب والعودة
-    if any(word in text_norm for word in ['اهلا', 'مرحبا', 'سلام']):
-        return "start"
-    elif any(word in text_norm for word in ['رجوع', 'رجع', 'عوده']):
+        return "map_menu"
+    
+    # الرجوع
+    if 'رجوع' in text_norm or 'عودة' in text_norm:
         return "back"
-
+    
     return "unknown"
 
 # ================= وظائف الحج والعمرة =================
@@ -230,7 +162,6 @@ def process_text(text):
 async def handle_hajj(update: Update, context: ContextTypes.DEFAULT_TYPE):
     response = """**مناسك الحج خطوة بخطوة:**
 
-**الأيام الثلاثة الأولى (8-10 ذي الحجة):**
 📅 **اليوم 8 (التروية):** الإحرام والمبيت في منى
 
 📅 **اليوم 9 (عرفة):**
@@ -242,299 +173,217 @@ async def handle_hajj(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🌄 الفجر: الصلاة في مزدلفة وجمع الحصى
 🌞 الصباح: رمي جمرة العقبة → الحلق → الذبح → الطواف
 
-**أيام التشريق (11-13 ذي الحجة):**
-📅 رمي الجمرات الثلاث → المبيت في منى → تكرار لمدة 2-3 أيام
+**أيام التشريق (11-13):**
+📅 رمي الجمرات الثلاث → المبيت في منى
 
-**أخيراً:** طواف الوداع عند المغادرة
-"""
+**أخيراً:** طواف الوداع عند المغادرة"""
     await update.message.reply_text(response, reply_markup=markup_back, parse_mode='Markdown')
 
 
 async def handle_umrah(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    response = """**معلومات شاملة عن العمرة:**
+    response = """**خطوات العمرة:**
 
-🕋 **ما هي العمرة؟**
-زيارة بيت الله الحرام لأداء نسك مخصوص من طواف وسعي وحلق.
-
-**خطوات العمرة بالترتيب:**
 1️⃣ **الإحرام من الميقات**
    - النية: "اللهم إني أريد العمرة"
    - التلبية: "لبيك اللهم عمرة"
 
 2️⃣ **الطواف حول الكعبة (7 أشواط)**
-   - تبدأ من الحجر الأسود
-   - تدور عكس عقارب الساعة
 
 3️⃣ **صلاة ركعتين خلف مقام إبراهيم**
 
 4️⃣ **السعي بين الصفا والمروة (7 أشواط)**
-   - تبدأ من الصفا وتنتهي بالمروة
 
 5️⃣ **الحلق أو التقصير**
-   - الرجال: الحلق أفضل أو التقصير
-   - النساء: تقصير قدر أنملة من الشعر
-"""
+   - الرجال: الحلق أفضل
+   - النساء: تقصير قدر أنملة"""
     await update.message.reply_text(response, reply_markup=markup_back, parse_mode='Markdown')
 
 # ================= وظائف الأدعية =================
 
-async def duas_menu(update, context):
-    text = "**📿 اختر نوع الدعاء:**"
-    await update.message.reply_text(text, reply_markup=markup_dua, parse_mode='Markdown')
+async def duas_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("**📿 اختر نوع الدعاء:**", reply_markup=markup_dua, parse_mode='Markdown')
 
 
-async def dua_ihram(update, context):
+async def dua_ihram(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = """**أدعية الإحرام:**
 
-📿 *النية:*
-اللهم إني نويت العمرة/الحج فيسره لي وتقبله مني.
+📿 *النية:* اللهم إني نويت العمرة/الحج فيسره لي وتقبله مني.
 
-📿 *الدعاء:*
-اللهم إني أسألك رضاك والجنة، وأعوذ بك من سخطك والنار.
-
-📿 *التلبية:*
-لبيك اللهم لبيك، لبيك لا شريك لك لبيك، إن الحمد والنعمة لك والملك، لا شريك لك."""
+📿 *التلبية:* لبيك اللهم لبيك، لبيك لا شريك لك لبيك، إن الحمد والنعمة لك والملك، لا شريك لك."""
     await update.message.reply_text(text, parse_mode='Markdown')
 
 
-async def dua_tawaf(update, context):
+async def dua_tawaf(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = """**أدعية الطواف:**
 
-📿 *في بداية كل شوط:*
-بسم الله والله أكبر
+📿 *في بداية كل شوط:* بسم الله والله أكبر
 
-📿 *دعاء عام:*
-ربنا آتنا في الدنيا حسنة وفي الآخرة حسنة وقنا عذاب النار.
-
-📿 *دعاء آخر:*
-اللهم اغفر وارحم واعف عما تعلم، إنك أنت الأعز الأكرم."""
+📿 *دعاء:* ربنا آتنا في الدنيا حسنة وفي الآخرة حسنة وقنا عذاب النار."""
     await update.message.reply_text(text, parse_mode='Markdown')
 
 
-async def dua_saee(update, context):
+async def dua_saee(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = """**أدعية السعي:**
 
-📿 *عند الصفا:*
-إِنَّ الصَّفَا وَالْمَرْوَةَ مِن شَعَائِرِ اللَّهِ
+📿 *عند الصفا:* إِنَّ الصَّفَا وَالْمَرْوَةَ مِن شَعَائِرِ اللَّهِ
 
-📿 *أثناء السعي:*
-رب اغفر وارحم وتجاوز عما تعلم.
+📿 *أثناء السعي:* رب اغفر وارحم وتجاوز عما تعلم.
 
-📿 *عند المروة:*
-اللهم اجعلني من المقبولين."""
+📿 *عند المروة:* اللهم اجعلني من المقبولين."""
     await update.message.reply_text(text, parse_mode='Markdown')
 
 
-async def dua_arafah(update, context):
+async def dua_arafah(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = """**أدعية يوم عرفة:**
 
-📿 *أفضل الدعاء:*
-لا إله إلا الله وحده لا شريك له، له الملك وله الحمد وهو على كل شيء قدير.
+📿 *أفضل الدعاء:* لا إله إلا الله وحده لا شريك له، له الملك وله الحمد وهو على كل شيء قدير.
 
-📿 *دعاء عام:*
-اللهم اغفر لي ولوالدي وللمؤمنين والمؤمنات.
-
-📿 *دعاء شامل:*
-اللهم أصلح لي ديني ودنياي وآخرتي."""
+📿 *دعاء:* اللهم اغفر لي ولوالدي وللمؤمنين والمؤمنات."""
     await update.message.reply_text(text, parse_mode='Markdown')
 
 
-async def dua_jamarat(update, context):
+async def dua_jamarat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = """**أدعية رمي الجمرات:**
 
-📿 *عند كل حصاة:*
-الله أكبر، رغما للشيطان وحزبِه.
+📿 *عند كل حصاة:* الله أكبر، رغماً للشيطان وحزبه.
 
-📿 *بعد الرمي:*
-اللهم اجعله حجًا مبرورًا وسعيًا مشكورًا.
-
-📿 *دعاء عام:*
-اللهم تقبل مني إنك أنت السميع العليم."""
+📿 *بعد الرمي:* اللهم اجعله حجاً مبروراً وسعياً مشكوراً."""
     await update.message.reply_text(text, parse_mode='Markdown')
 
 
-async def dua_general(update, context):
+async def dua_general(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = """**أدعية عامة:**
 
-📿 *لتيسير الأمور:*
-رب اشرح لي صدري ويسر لي أمري.
+📿 *لتيسير الأمور:* رب اشرح لي صدري ويسر لي أمري.
 
-📿 *لحسن الخاتمة:*
-اللهم حسن الخاتمة.
+📿 *لحسن الخاتمة:* اللهم حسن الخاتمة.
 
-📿 *أدعية جميلة:*
-• اللهم اجعل آخر كلامنا من الدنيا لا إله إلا الله.
-• اللهم ارزقني حجًا مبرورًا وسعيًا مشكورًا."""
+📿 *اللهم ارزقني حجاً مبروراً وسعياً مشكوراً."""
     await update.message.reply_text(text, parse_mode='Markdown')
 
 # ================= وظائف الأخطاء =================
 
-async def mistakes_menu_show(update, context):
-    text = "**⚠️ اختر الخطأ الذي وقعت فيه:**"
-    await update.message.reply_text(text, reply_markup=markup_mistakes, parse_mode='Markdown')
+async def mistakes_menu_show(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("**⚠️ اختر الخطأ:**", reply_markup=markup_mistakes, parse_mode='Markdown')
 
 
-async def mistake_detail(update, text):
+async def mistake_detail(update: Update, text: str):
     await update.message.reply_text(text, parse_mode='Markdown')
 
 # ================= وظائف الخرائط =================
 
-async def map_menu_show(update, context):
-    text = "**🗺️ اختر الموقع:**"
-    await update.message.reply_text(text, reply_markup=markup_map, parse_mode='Markdown')
+async def map_menu_show(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("**🗺️ اختر الموقع:**", reply_markup=markup_map, parse_mode='Markdown')
 
 
-async def send_haram_location(update, context):
+async def send_haram_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_location(latitude=21.4225, longitude=39.8262)
     await update.message.reply_text(
-        "**المسجد الحرام:**\n"
-        "مكة المكرمة، المملكة العربية السعودية\n\n"
-        "💎 *أهم الأماكن:*\n"
-        "• الكعبة المشرفة\n• الحجر الأسود\n• مقام إبراهيم\n• بئر زمزم",
+        "**المسجد الحرام**\nمكة المكرمة\n\n• الكعبة المشرفة\n• الحجر الأسود\n• مقام إبراهيم",
         parse_mode='Markdown'
     )
 
 
-async def send_safa_location(update, context):
+async def send_safa_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_location(latitude=21.4229, longitude=39.8257)
     await update.message.reply_text(
-        "**جبل الصفا:**\n"
-        "يبدأ منه السعي بين الصفا والمروة\n\n"
-        "💎 *عند الصعود عليه:*\n"
-        "يقرأ: إِنَّ الصَّفَا وَالْمَرْوَةَ مِن شَعَائِرِ اللَّهِ",
+        "**جبل الصفا**\nبداية السعي\n\nإِنَّ الصَّفَا وَالْمَرْوَةَ مِن شَعَائِرِ اللَّهِ",
         parse_mode='Markdown'
     )
 
 
-async def send_marwah_location(update, context):
+async def send_marwah_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_location(latitude=21.4237, longitude=39.8267)
     await update.message.reply_text(
-        "**جبل المروة:**\n"
-        "ينتهي إليه السعي بين الصفا والمروة\n\n"
-        "💎 *بعد الانتهاء من السعي:*\n"
-        "يقوم الحاج بالحلق أو التقصير",
+        "**جبل المروة**\nنهاية السعي",
         parse_mode='Markdown'
     )
 
 # ================= وظائف الميقات =================
 
-async def miqat_sham(update, context):
+async def miqat_sham(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = """**🕋 ميقات بلاد الشام**
 (سوريا، لبنان، الأردن، فلسطين)
 
 📍 **الميقات:** ذو الحليفة (أبيار علي)
-🌍 **الموقع:** شمال غرب المدينة المنورة
-📏 **المسافة:** حوالي 450 كم من مكة
+📏 **المسافة:** 450 كم من مكة
 
-**📋 الإجراءات:**
+**الإجراءات:**
 • النية قبل الوصول للميقات
-• لبس الإحرام في السيارة أو الطائرة
-• بدء التلبية: 'لبيك اللهم حجاً'"""
+• لبس الإحرام في السيارة أو الطائرة"""
     await update.message.reply_text(text, reply_markup=markup_back, parse_mode='Markdown')
     await update.message.reply_location(latitude=24.9167, longitude=39.6167)
 
 
-async def miqat_egypt(update, context):
+async def miqat_egypt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = """**🕋 ميقات مصر وشمال أفريقيا**
 (مصر، ليبيا، تونس، الجزائر، المغرب، السودان)
 
 📍 **الميقات:** الجحفة (رابغ)
-🌍 **الموقع:** على الطريق الساحلي إلى مكة
-📏 **المسافة:** حوالي 180 كم شمال غرب مكة
+📏 **المسافة:** 180 كم شمال غرب مكة
 
 **✈️ للحجاج الجويين:**
-• تحرم في الطائرة قبل الهبوط
-• لا يجوز تأخير الإحرام"""
+• تحرم في الطائرة قبل الهبوط"""
     await update.message.reply_text(text, reply_markup=markup_back, parse_mode='Markdown')
     await update.message.reply_location(latitude=26.3294, longitude=35.3123)
 
 
-async def miqat_yemen(update, context):
+async def miqat_yemen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = """**🕋 ميقات اليمن**
 (اليمن، حضرموت)
 
 📍 **الميقات:** يَلَمْلم
-🌍 **الموقع:** شرق مكة على حدود نجد
-📏 **المسافة:** حوالي 100 كم شرق مكة
+📏 **المسافة:** 100 كم شرق مكة
 
 **✈️ للحجاج الجويين:**
-• إذا هبطت في جدة: تحرم في المطار
-• لا تجاوز الميقات دون إحرام"""
+• إذا هبطت في جدة: تحرم في المطار"""
     await update.message.reply_text(text, reply_markup=markup_back, parse_mode='Markdown')
     await update.message.reply_location(latitude=21.4167, longitude=40.6000)
 
-
-async def miqat_general(update, context):
-    text = """**🕋 معلومات عامة عن مواقيت الإحرام**
-
-**📌 المواقيت المكانية الخمسة:**
-1. **ذي الحليفة:** لأهل المدينة والشام
-2. **الجحفة:** لأهل مصر وشمال أفريقيا
-3. **يلملم:** لأهل اليمن والجنوب
-4. **قرن المنازل:** لأهل نجد والشرق
-5. **ذات عرق:** لأهل العراق والشمال
-
-**💡 قاعدة عامة:**
-أي شخص قاصد مكة للحج أو العمرة لا يجوز له تجاوز الميقات دون إحرام"""
-    await update.message.reply_text(text, reply_markup=markup_back, parse_mode='Markdown')
-
-# ================= start =================
+# ================= دالة start =================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = """🌙 *مرحبا بك في مساعد الحج والعمرة* 🤲
 
-*للاستعلام عن الميقات، اكتب اسم بلدك مثل:*
-• "مصر" أو "المغرب" أو "الجزائر"
-• "سوريا" أو "لبنان" أو "فلسطين"
-
-*أو اكتب أي مما يلي:*
-• "عمره" أو "حج"
-• "دعاء طواف" أو "أدعية السعي"
-• "خريطة الحرم" أو "موقع الصفا"
+*للاستعلام عن الميقات، اكتب اسم بلدك:*
+• "مصر" أو "سوريا" أو "اليمن"
 
 *أو اختر من القائمة:* 👇"""
     await update.message.reply_text(welcome_text, reply_markup=markup_main, parse_mode='Markdown')
 
 
 async def send_current_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """يرسل موقع الحاج الحالي"""
+    """يرسل موقع المستخدم الحالي"""
     if update.message.location:
         lat = update.message.location.latitude
         lon = update.message.location.longitude
-
-        # حساب المسافة من الحرم
         dist_haram = calculate_distance(lat, lon, 21.4225, 39.8262)
-
         await update.message.reply_location(latitude=lat, longitude=lon)
         await update.message.reply_text(
-            f"**موقعك الحالي:**\n"
-            f"📍 خط العرض: {lat:.4f}\n"
-            f"📍 خط الطول: {lon:.4f}\n\n"
-            f"**المسافة من الحرم:** {dist_haram:,} متر\n\n"
-            f"💡 *إذا كنت في مكة، يمكنك الإحرام من مكانك*",
+            f"**موقعك الحالي:**\n📍 {lat:.4f}, {lon:.4f}\n\n📏 **المسافة من الحرم:** {dist_haram:,} متر",
             reply_markup=markup_main,
             parse_mode='Markdown'
         )
     else:
         await update.message.reply_text(
-            "📍 **يرجى الضغط على زر 'إرسال موقعي' للحصول على موقعك:**",
+            "📍 اضغط على زر 'إرسال موقعي'",
             reply_markup=location_keyboard,
             parse_mode='Markdown'
         )
 
-# ================= معالج الرسائل الرئيسي =================
+# ================= المعالج الرئيسي =================
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """معالجة جميع الرسائل النصية"""
     text = update.message.text.strip()
     
-    # التحقق من الأزرار أولاً
-    if text == "رجوع للقائمة الرئيسية" or text == "رجوع":
+    # أزرار الرجوع
+    if text in ["رجوع", "رجوع للقائمة الرئيسية"]:
         await start(update, context)
         return
     
     # القائمة الرئيسية
-    elif text == "الحج":
+    if text == "الحج":
         await handle_hajj(update, context)
     elif text == "العمرة":
         await handle_umrah(update, context)
@@ -545,11 +394,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif text == "الأخطاء والكفارات":
         await mistakes_menu_show(update, context)
     elif text == "ميقات الإحرام":
-        await update.message.reply_text(
-            "**🌍 ميقات الإحرام للبلدان المختلفة**\n\nاختر منطقتك:",
-            reply_markup=markup_miqat,
-            parse_mode='Markdown'
-        )
+        await update.message.reply_text("**🌍 اختر منطقتك:**", reply_markup=markup_miqat, parse_mode='Markdown')
     
     # أزرار الأدعية
     elif text == "أدعية الإحرام":
@@ -577,80 +422,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # أزرار الأخطاء
     elif text == "لبس المخيط":
-        await mistake_detail(update,
-            """**👕 لبس المخيط (للرجل)**
-
-❌ **الخطأ:** لبس مخيط بعد الإحرام
-⚖️ **الحكم:** محظور إحرام
-💰 **الكفارة:** فدية أذى (اختيار واحد)
-- ذبح شاة
-- أو إطعام 6 مساكين
-- أو صيام 3 أيام
-
-**ماذا تفعل؟** اخلعه فوراً وادفع الفدية.""")
+        await mistake_detail(update, "**👕 لبس المخيط**\n❌ محظور\n💰 الكفارة: فدية أذى (شاة أو إطعام 6 مساكين أو صيام 3 أيام)")
     elif text == "التطيب بعد الإحرام":
-        await mistake_detail(update,
-            """**🌹 التطيب بعد الإحرام**
-
-❌ **الخطأ:** استعمال الطيب أو العطر بعد الإحرام
-⚖️ **الحكم:** محظور إحرام
-💰 **الكفارة:** فدية أذى""")
+        await mistake_detail(update, "**🌹 التطيب بعد الإحرام**\n❌ محظور\n💰 الكفارة: فدية أذى")
     elif text == "قص الشعر أو الأظافر":
-        await mistake_detail(update,
-            """**✂️ قص الشعر أو الأظافر**
-
-❌ **الخطأ:** قص الشعر أو الأظافر أثناء الإحرام
-⚖️ **الحكم:** محظور إحرام
-💰 **الكفارة:** فدية أذى""")
+        await mistake_detail(update, "**✂️ قص الشعر أو الأظافر**\n❌ محظور\n💰 الكفارة: فدية أذى")
     elif text == "تغطية الرأس":
-        await mistake_detail(update,
-            """**🧢 تغطية الرأس (للرجل)**
-
-❌ **الخطأ:** تغطية الرأس بعد الإحرام
-⚖️ **الحكم:** محظور إحرام
-💰 **الكفارة:** فدية أذى
-📌 **ملاحظة:** المظلة لا تُعد تغطية.""")
+        await mistake_detail(update, "**🧢 تغطية الرأس (للرجل)**\n❌ محظور\n💰 الكفارة: فدية أذى")
     elif text == "الطواف بدون وضوء":
-        await mistake_detail(update,
-            """**💧 الطواف بدون وضوء**
-
-❌ **الخطأ:** الطواف بدون وضوء
-⚖️ **الحكم:** الطواف غير صحيح عند جمهور العلماء
-**ما العمل؟** يجب إعادة الطواف فقط
-💰 **كفارة:** لا يوجد""")
+        await mistake_detail(update, "**💧 الطواف بدون وضوء**\n❌ الطواف غير صحيح\n📌 يجب إعادة الطواف")
     elif text == "نسي شوط":
-        await mistake_detail(update,
-            """**🔄 نسي شوط**
-
-❌ **الخطأ:** نسي شوط في الطواف أو السعي
-⚖️ **الحكم:** إن تذكرت قريبًا أكمل، إن طال الفصل أعد الطواف
-💰 **كفارة:** لا يوجد""")
+        await mistake_detail(update, "**🔄 نسي شوط**\n📌 إن تذكرت قريباً أكمل، وإلا أعد الطواف")
     elif text == "السعي قبل الطواف":
-        await mistake_detail(update,
-            """**🚶 السعي قبل الطواف**
-
-❌ **الخطأ:** السعي قبل الطواف
-⚖️ **الحكم:** السعي غير صحيح
-**ما العمل؟** أعد السعي بعد الطواف
-💰 **كفارة:** لا يوجد""")
+        await mistake_detail(update, "**🚶 السعي قبل الطواف**\n❌ السعي غير صحيح\n📌 أعد السعي بعد الطواف")
     elif text == "ترك واجب":
-        await mistake_detail(update,
-            """**⚠️ ترك واجب**
-
-❌ **الخطأ:** ترك واجب (مبيت، رمي)
-⚖️ **الحكم:** النسك صحيح
-💰 **الكفارة:** دم (ذبح شاة)
-📌 **تنبيه:** لا صيام بديل""")
+        await mistake_detail(update, "**⚠️ ترك واجب**\n💰 الكفارة: دم (ذبح شاة)")
     elif text == "الجماع":
-        await mistake_detail(update,
-            """**💔 الجماع قبل التحلل الأول**
-
-❌ **الخطأ:** الجماع قبل التحلل الأول
-⚖️ **الحكم:** يفسد النسك
-**ما يجب:**
-- إكمال الحج
-- القضاء من عام قادم
-- ذبح بدنة (جمل)""")
+        await mistake_detail(update, "**💔 الجماع قبل التحلل**\n❌ يفسد الحج\n📌 يجب: إكمال الحج + القضاء + بدنة")
     
     # أزرار الميقات
     elif text == "الشام (سوريا، لبنان، الأردن، فلسطين)":
@@ -663,7 +451,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # معالجة النصوص الذكية
     else:
         intent = process_text(text)
-        
         if intent == "hajj":
             await handle_hajj(update, context)
         elif intent == "umrah":
@@ -697,21 +484,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif intent == "miqat_yemen":
             await miqat_yemen(update, context)
         elif intent == "miqat_menu":
-            await update.message.reply_text(
-                "**🌍 ميقات الإحرام للبلدان المختلفة**\n\nاختر منطقتك:",
-                reply_markup=markup_miqat,
-                parse_mode='Markdown'
-            )
-        elif intent == "start":
-            await start(update, context)
+            await update.message.reply_text("**🌍 اختر منطقتك:**", reply_markup=markup_miqat, parse_mode='Markdown')
         elif intent == "back":
             await start(update, context)
-        elif intent == "unknown":
+        else:
             await update.message.reply_text(
-                "🤔 لم أفهم سؤالك.\n\n"
-                "*للميقات، اكتب:*\n"
-                "• 'مصر' أو 'سوريا'\n"
-                "*أو استخدم الأزرار* 👇",
+                "🤔 لم أفهم.\nاكتب اسم بلدك أو اختر من القائمة 👇",
                 reply_markup=markup_main,
                 parse_mode='Markdown'
             )
@@ -719,27 +497,31 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ================= معالج الموقع =================
 
 async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """معالجة الموقع المرسل من المستخدم"""
     await send_current_location(update, context)
 
 # ================= الدالة الرئيسية =================
 
-# ================= الدالة الرئيسية (بديل) =================
 def main():
     """تشغيل البوت"""
+    print(f"🚀 بدء تشغيل البوت...")
+    print(f"📱 التوكن: {TOKEN[:5]}...{TOKEN[-5:] if TOKEN else 'غير موجود'}")
+    
+    if not TOKEN:
+        print("❌ خطأ: التوكن غير موجود!")
+        return
+    
     # بناء التطبيق
-    app = ApplicationBuilder().token(TOKEN).build()
+    app = Application.builder().token(TOKEN).build()
     
     # إضافة المعالجات
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(MessageHandler(filters.LOCATION, handle_location))
     
-    print("🤖 البوت يعمل على Render...")
+    print("✅ البوت جاهز للتشغيل...")
     
-    # للتشغيل على Render بدون webhook
+    # تشغيل البوت
     app.run_polling()
 
 if __name__ == "__main__":
     main()
-
