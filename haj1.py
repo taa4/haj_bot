@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*- **
-import os
-import sys
-import math
 import logging
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
@@ -506,32 +503,30 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ================= الدالة الرئيسية =================
 
 def main():
-    """تشغيل البوت"""
-    print("🚀 بدء تشغيل البوت...")
+    """تشغيل البوت على Render باستخدام Webhook"""
+    print(f"🚀 بدء تشغيل البوت باستخدام Webhook...")
     print(f"🐍 Python version: {sys.version}")
 
-    if not TOKEN:
-        print("❌ خطأ: التوكن غير موجود!")
-        return
+    PORT = int(os.environ.get("PORT", 5000))  # Render يعطي بورت تلقائي
+    WEBHOOK_URL = f"https://اسم-مشروعك.onrender.com/{TOKEN}"  # استبدل باسم مشروعك على Render
 
     # بناء التطبيق
     app = Application.builder().token(TOKEN).build()
 
-    # إضافة المعالجات
+    # إضافة المعالجات كما هي في كودك
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(MessageHandler(filters.LOCATION, handle_location))
 
-    print("✅ البوت يعمل بنظام Webhook...")
+    print("✅ البوت جاهز للتشغيل...")
 
-    # إعدادات Render
-    port = int(os.environ.get("PORT", 10000))
-    render_url = os.environ.get("RENDER_EXTERNAL_URL")
-
+    # تشغيل Webhook
     app.run_webhook(
         listen="0.0.0.0",
-        port=port,
-        webhook_url=f"{render_url}/{TOKEN}",
+        port=PORT,
+        webhook_url=WEBHOOK_URL
     )
 
+if __name__ == "__main__":
+    main()
 
