@@ -2,7 +2,7 @@
 import os       # للوصول للمتغيرات البيئية
 import sys      # لاستخدام sys.exit
 import math     # لحساب المسافات
-
+import requests
 import logging
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
@@ -1611,6 +1611,7 @@ if __name__ == "__main__":
 
 if __name__ == "__main__":
     main()
+
 
 
 
