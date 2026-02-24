@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*- **
 import logging
-import os
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 from dotenv import load_dotenv
-import sys
-import math
-# إعداد logging
+import os       # للوصول للمتغيرات البيئية
+import sys      # لاستخدام sys.exit
+import math     # لحساب المسافات
+
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
@@ -531,6 +531,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
