@@ -507,26 +507,31 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     """تشغيل البوت"""
-    print(f"🚀 بدء تشغيل البوت...")
+    print("🚀 بدء تشغيل البوت...")
     print(f"🐍 Python version: {sys.version}")
-    
+
     if not TOKEN:
         print("❌ خطأ: التوكن غير موجود!")
         return
-    
+
     # بناء التطبيق
     app = Application.builder().token(TOKEN).build()
-    
+
     # إضافة المعالجات
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(MessageHandler(filters.LOCATION, handle_location))
-    
-    print("✅ البوت جاهز للتشغيل...")
-    
-    # تشغيل البوت
-    app.run_polling()
 
-if __name__ == "__main__":
-    main()
+    print("✅ البوت يعمل بنظام Webhook...")
+
+    # إعدادات Render
+    port = int(os.environ.get("PORT", 10000))
+    render_url = os.environ.get("RENDER_EXTERNAL_URL")
+
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=port,
+        webhook_url=f"{render_url}/{TOKEN}",
+    )
+
 
