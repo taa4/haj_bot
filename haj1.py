@@ -3,7 +3,8 @@ import logging
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 from dotenv import load_dotenv
-
+import sys
+import math
 # إعداد logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -508,7 +509,7 @@ def main():
     print(f"🐍 Python version: {sys.version}")
 
     PORT = int(os.environ.get("PORT", 5000))  # Render يعطي بورت تلقائي
-    WEBHOOK_URL = f"https://haj-bot.onrender.com//{TOKEN}"  # استبدل باسم مشروعك على Render
+    WEBHOOK_URL = f"https://haj-bot.onrender.com/{TOKEN}"  # استبدل باسم مشروعك على Render
 
     # بناء التطبيق
     app = Application.builder().token(TOKEN).build()
@@ -529,5 +530,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
