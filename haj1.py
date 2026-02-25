@@ -249,8 +249,7 @@ def process_text(text):
 
     if 'جماع' in text_norm:
         return "mistake_intercourse"
-    else:
-        return "mistakes_menu"
+    
 
     # المواقع
     map_keywords = ['خريطة', 'موقع', 'مكان', 'اين', 'وين']
