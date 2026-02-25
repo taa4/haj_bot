@@ -252,7 +252,7 @@ def process_text(text):
     
 
     # المواقع
-    map_keywords = ['خريطة', 'موقع', 'مكان', 'اين', 'وين']
+    map_keywords = ['خريطة','خريطة','خرائط', 'موقع', 'مكان', 'اين', 'وين']
     if any(keyword in text_norm for keyword in map_keywords):
         if 'حرام' in text_norm:
             return "map_haram"
