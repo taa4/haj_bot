@@ -223,20 +223,34 @@ def process_text(text):
     # الأخطاء
     mistakes_keywords = ['خطاء', 'خطا', 'غلط', 'كفارة']
     if any(keyword in text_norm for keyword in mistakes_keywords):
-        if 'لبس مخيط' in text_norm:
+        if 'لبس المخيط' in text_norm or 'مخيط' in text_norm or 'لبس ملابس عادية' in text_norm:
             return "mistake_clothes"
-        elif 'طيب' in text_norm:
-            return "mistake_perfume"
-        elif 'قص شعر' in text_norm or 'قص اظافر' in text_norm:
-            return "mistake_hair_nails"
-        elif 'تغطية الرأس' in text_norm:
-            return "mistake_cover_head" 
-        elif 'طواف بدون وضوء' in text_norm:
-            return "mistake_tawaf_no_wudu"
-        elif 'نسي شوط' in text_norm:
-            return "mistake_miss_shawt"
-        else:
-            return "mistakes_menu"
+
+    if 'تطيب' in text_norm or 'عطر' in text_norm or 'رش العطر' in text_norm:
+        return "mistake_perfume"
+
+    if 'قص شعر' in text_norm or 'قص اظافر' in text_norm or 'الشعر' in text_norm or 'الاظافر' in text_norm:
+        return "mistake_hair_nails"
+
+    if 'تغطية الراس' in text_norm:
+        return "mistake_cover_head"
+
+    if 'طواف بدون وضوء' in text_norm:
+        return "mistake_tawaf_no_wudu"
+
+    if 'نسي شوط' in text_norm or 'شوط' in text_norm or 'نسي شوط واحد' in text_norm:
+        return "mistake_miss_shawt"
+
+    if 'السعي قبل الطواف' in text_norm or 'نسيان طواف' in text_norm :
+        return "mistake_saee_before_tawaf"
+ 
+    if 'ترك واجب' in text_norm or 'نسيان واجب' in text_norm:
+        return "mistake_leave_wajib"
+
+    if 'جماع' in text_norm:
+        return "mistake_intercourse"
+    else:
+        return "mistakes_menu"
 
     # المواقع
     map_keywords = ['خريطة', 'موقع', 'مكان', 'اين', 'وين']
@@ -848,7 +862,7 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif text == "موقعي الحالي":
         await send_current_location(update, context)
         return
-
+    
     # ================= أزرار الأخطاء =================
 
     elif text == "لبس المخيط":
@@ -1069,7 +1083,78 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=markup_main,
             parse_mode='Markdown'
         )
+#**************++++++++++++++****************
+    elif intent == "mistake_clothes":
+        await mistake_detail(update,
+                             "**👕 لبس المخيط (للرجل)**\n\n"
+                             "❌ **الخطأ:** لبس المخيط، لبس ملابس، ارتداء ثياب\n"
+                             "⚖️ **الحكم:** محظور إحرام\n💰 **الكفارة:** فدية أذى\n\n"
+                             "**ماذا تفعل؟**\n1. اخلعه فوراً\n2. ادفع الفدية\n3. استمر في مناسكك"
+                             )
+    elif intent == "mistake_perfume":
+        await mistake_detail(update,
+                             "**🌹 التطيب بعد الإحرام**\n\n"
+                             "❌ **الخطأ:** استعمال الطيب أو العطر بعد الإحرام\n\n"
+                             "⚖️ **الحكم:** محظور إحرام\n\n"
+                             "💰 **الكفارة:** فدية أذى"
+                             )
 
+    elif intent == "mistake_hair_nails":
+        await mistake_detail(update,
+                             "**💇 قص الشعر أو الأظافر**\n\n"
+                             "❌ **الخطأ:** قص الشعر أو الأظافر\n\n"
+                             "⚖️ **الحكم:** محظور إحرام\n"
+                             "💰 **الكفارة:** فدية أذى\n"
+                             "تنبيه: الجاهل والناسي عليه فدية عند الجمهور."
+                             )
+
+    elif intent == "mistake_cover_head":
+        await mistake_detail(update,
+            "⚠️ تغطية الرأس للرجل\n\n"
+            "لا يجوز للرجل المحرم تغطية رأسه بغطاء ملاصق.\n"
+            "🔹 الحكم: فدية.\n"
+            "🔹 المرأة يجب عليها تغطية رأسها لكن لا تلبس النقاب."
+        )
+
+    elif intent == "mistake_tawaf_no_wudu":
+        await mistake_detail(update,
+            "⚠️ الطواف بدون وضوء\n\n"
+            "يشترط الوضوء لصحة الطواف عند جمهور العلماء.\n"
+            "🔹 يجب إعادة الطواف.\n"
+            "🔹 لا تجب فدية إذا أعاد الطواف."
+        )
+
+    elif intent == "mistake_miss_shawt":
+        await mistake_detail(update,
+            "⚠️ نسيان شوط في الطواف أو السعي\n\n"
+            "إذا نسي شوطًا يجب إكماله متى تذكر.\n"
+            "🔹 إن طال الفصل يعيد الطواف أو السعي كاملًا.\n"
+            "🔹 لا فدية إذا تم التصحيح."
+        )
+
+    elif intent == "mistake_saee_before_tawaf":
+        await mistake_detail(update,
+            "⚠️ السعي قبل الطواف\n\n"
+            "الترتيب الصحيح: الطواف أولًا ثم السعي.\n"
+            "🔹 إذا سعى قبل الطواف فعليه إعادة السعي بعد الطواف.\n"
+            "🔹 لا فدية عند التصحيح."
+        )
+
+    elif intent == "mistake_leave_wajib":
+        await mistake_detail(update,
+            "⚠️ ترك واجب من واجبات الحج\n\n"
+            "مثل ترك المبيت بمزدلفة أو رمي الجمرات.\n"
+            "🔹 الحكم: دم (ذبح شاة توزع على فقراء الحرم).\n"
+            "🔹 لا يسقط الواجب إلا بعذر شرعي."
+        )
+
+    elif intent == "mistake_intercourse":
+        await mistake_detail(update,
+            "⚠️ الجماع قبل التحلل الأول\n\n"
+            "من أعظم محظورات الإحرام.\n"
+            "🔹 يفسد الحج إن كان قبل التحلل الأول.\n"
+            "🔹 يجب إكمال الحج والقضاء في العام القادم + ذبح بدنة."
+        )
 # ================= تشغيل البوت =================
 def main():
     app = ApplicationBuilder().token(TOKEN).build()
