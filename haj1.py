@@ -208,7 +208,7 @@ def process_text(text):
     if "احرام" in text_norm:
         return "dua_ihram"
 
-    if "طواف" in text_norm:
+    if "ادعية طواف" in text_norm:
         return "dua_tawaf"
 
     if "سعي" in text_norm:
